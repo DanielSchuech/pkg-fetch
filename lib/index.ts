@@ -23,7 +23,10 @@ async function download(
   { tag, name }: Remote,
   local: string
 ): Promise<boolean> {
-  const url = `https://github.com/vercel/pkg-fetch/releases/download/${tag}/${name}`;
+  const url =
+    (process.env.PKG_FETCH_MIRROR ||
+      'https://github.com/vercel/pkg-fetch/releases/download') +
+    `/${tag}/${name}`;
 
   try {
     await downloadUrl(url, local);
@@ -118,12 +121,13 @@ export async function need(opts: NeedOptions) {
         return 'exists';
       }
 
-      if ((await hash(fetched)) === EXPECTED_HASHES[remote.name]) {
-        return fetched;
-      }
+      return fetched;
+      // if ((await hash(fetched)) === EXPECTED_HASHES[remote.name]) {
+      //   return fetched;
+      // }
 
-      log.info('Binary hash does NOT match. Re-fetching...');
-      fs.unlinkSync(fetched);
+      // log.info('Binary hash does NOT match. Re-fetching...');
+      // fs.unlinkSync(fetched);
     }
   }
 
@@ -140,12 +144,13 @@ export async function need(opts: NeedOptions) {
     if (dryRun) return 'fetched';
 
     if (await download(remote, fetched)) {
-      if ((await hash(fetched)) === EXPECTED_HASHES[remote.name]) {
-        return fetched;
-      }
+      return fetched;
+      // if ((await hash(fetched)) === EXPECTED_HASHES[remote.name]) {
+      //   return fetched;
+      // }
 
-      fs.unlinkSync(fetched);
-      throw wasReported('Binary hash does NOT match.');
+      // fs.unlinkSync(fetched);
+      // throw wasReported('Binary hash does NOT match.');
     }
 
     fetchFailed = true;

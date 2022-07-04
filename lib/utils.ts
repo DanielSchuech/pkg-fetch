@@ -44,7 +44,7 @@ export async function downloadUrl(url: string, file: string): Promise<void> {
   res.body.pipe(ws);
 
   return new Promise<void>((resolve, reject) => {
-    stream.finished(ws, (err) => {
+    stream.finished(ws, async (err) => {
       if (err) {
         log.disableProgress();
         fs.rmSync(tempFile);
@@ -53,7 +53,30 @@ export async function downloadUrl(url: string, file: string): Promise<void> {
         log.showProgress(100);
         log.disableProgress();
         fs.moveSync(tempFile, file);
-        resolve();
+
+        // check hash after downloading if mirror used and prebuild node downloading
+        if (
+          process.env.PKG_FETCH_MIRROR &&
+          url.indexOf(process.env.PKG_FETCH_MIRROR) > -1
+        ) {
+          const expectedHash = await fetch(url + '.sha256sum')
+            .then((res) => res.text())
+            // has form: "[hash] [node version]"
+            .then((res) => res.split(' ')[0])
+            .catch(() => 'Missing expected hash');
+          const fileHash = await hash(file);
+          if (expectedHash !== fileHash) {
+            reject(
+              wasReported(
+                `Download hash mismatch: Expected ${expectedHash}, got ${fileHash}`
+              )
+            );
+          } else {
+            resolve();
+          }
+        } else {
+          resolve();
+        }
       }
     });
   });
